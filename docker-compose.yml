@@ -1,0 +1,16 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  github-stats:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    restart: unless-stopped
+    container_name: github-stats-service
+
+# .env file (create this with your GitHub token)
+# GITHUB_TOKEN=your_github_personal_access_token_here
