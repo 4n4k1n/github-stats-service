@@ -46,74 +46,72 @@ try {
 	let totalCommits = 0;
 	let totalAdditions = 0;
 	let totalDeletions = 0;
+	let contributedRepos = 0;
 	
-	// Fetch commit data for each repository (limited to avoid rate limits)
-	const repoLimit = Math.min(repos.length, 20); // Limit to 20 repos to avoid rate limits
-	
-	for (let i = 0; i < repoLimit; i++) {
+	// Fetch commit data for all repositories
+	for (let i = 0; i < repos.length; i++) {
 		const repo = repos[i];
-		if (!repo.fork) { // Skip forks to avoid counting duplicate commits
-			try {
-				// Get commit count for this repo
-				const commitsResponse = await fetch(`https://api.github.com/repos/${username}/${repo.name}/commits?per_page=1&author=${username}`, {
-					headers: {
-						'Authorization': process.env.GITHUB_TOKEN ? `token ${process.env.GITHUB_TOKEN}` : '',
-						'Accept': 'application/vnd.github.v3+json',
-						'User-Agent': 'GitHub-Stats-Service'
-					}
-				});
-				
-				if (commitsResponse.ok) {
-					const linkHeader = commitsResponse.headers.get('link');
-					if (linkHeader) {
-						// Parse the link header to get total pages
-						const lastPageMatch = linkHeader.match(/page=(\d+)>; rel="last"/);
-						if (lastPageMatch) {
-							totalCommits += parseInt(lastPageMatch[1]);
-						}
-					} else {
-						// If no link header, there's only one page
-						const commits = await commitsResponse.json();
-						totalCommits += commits.length;
-					}
+		// Include all repos including forks
+		try {
+			// Get commit count for this repo
+			const commitsResponse = await fetch(`https://api.github.com/repos/${username}/${repo.name}/commits?per_page=1&author=${username}`, {
+				headers: {
+					'Authorization': process.env.GITHUB_TOKEN ? `token ${process.env.GITHUB_TOKEN}` : '',
+					'Accept': 'application/vnd.github.v3+json',
+					'User-Agent': 'GitHub-Stats-Service'
 				}
-				
-				// Get stats for this repo
-				const statsResponse = await fetch(`https://api.github.com/repos/${username}/${repo.name}/stats/contributors`, {
-					headers: {
-						'Authorization': process.env.GITHUB_TOKEN ? `token ${process.env.GITHUB_TOKEN}` : '',
-						'Accept': 'application/vnd.github.v3+json',
-						'User-Agent': 'GitHub-Stats-Service'
+			});
+			
+			if (commitsResponse.ok) {
+				const linkHeader = commitsResponse.headers.get('link');
+				if (linkHeader) {
+					// Parse the link header to get total pages
+					const lastPageMatch = linkHeader.match(/page=(\d+)>; rel="last"/);
+					if (lastPageMatch) {
+						totalCommits += parseInt(lastPageMatch[1]);
 					}
-				});
-				
-				if (statsResponse.ok) {
-					try {
-						const stats = await statsResponse.json();
-						// Ensure stats is an array before using find
-						if (Array.isArray(stats)) {
-							// Find the user's contributions
-							const userStats = stats.find(contributor => 
-								contributor.author && contributor.author.login === username
-							);
-							
-							if (userStats && userStats.weeks) {
-								// Sum up all weeks' additions and deletions
-								userStats.weeks.forEach(week => {
-									totalAdditions += week.a || 0;
-									totalDeletions += week.d || 0;
-								});
-							}
-						}
-					} catch (jsonError) {
-						// Skip parsing if JSON is malformed
-						console.warn(`Error parsing stats JSON for ${repo.name}:`, jsonError.message);
-					}
+				} else {
+					// If no link header, there's only one page
+					const commits = await commitsResponse.json();
+					totalCommits += commits.length;
 				}
-			} catch (repoError) {
-				// Skip this repo if there's an error
-				console.warn(`Error fetching stats for ${repo.name}:`, repoError.message);
 			}
+			
+			// Get stats for this repo
+			const statsResponse = await fetch(`https://api.github.com/repos/${username}/${repo.name}/stats/contributors`, {
+				headers: {
+					'Authorization': process.env.GITHUB_TOKEN ? `token ${process.env.GITHUB_TOKEN}` : '',
+					'Accept': 'application/vnd.github.v3+json',
+					'User-Agent': 'GitHub-Stats-Service'
+				}
+			});
+			
+			if (statsResponse.ok) {
+				try {
+					const stats = await statsResponse.json();
+					// Ensure stats is an array before using find
+					if (Array.isArray(stats)) {
+						// Find the user's contributions
+						const userStats = stats.find(contributor => 
+							contributor.author && contributor.author.login === username
+						);
+						
+						if (userStats && userStats.weeks) {
+							// Sum up all weeks' additions and deletions
+							userStats.weeks.forEach(week => {
+								totalAdditions += week.a || 0;
+								totalDeletions += week.d || 0;
+							});
+						}
+					}
+				} catch (jsonError) {
+					// Skip parsing if JSON is malformed
+					console.warn(`Error parsing stats JSON for ${repo.name}:`, jsonError.message);
+				}
+			}
+		} catch (repoError) {
+			// Skip this repo if there's an error
+			console.warn(`Error fetching stats for ${repo.name}:`, repoError.message);
 		}
 	}
 	
