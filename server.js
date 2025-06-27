@@ -88,18 +88,26 @@ try {
 				});
 				
 				if (statsResponse.ok) {
-					const stats = await statsResponse.json();
-					// Find the user's contributions
-					const userStats = stats.find(contributor => 
-						contributor.author && contributor.author.login === username
-					);
-					
-					if (userStats) {
-						// Sum up all weeks' additions and deletions
-						userStats.weeks.forEach(week => {
-							totalAdditions += week.a || 0;
-							totalDeletions += week.d || 0;
-						});
+					try {
+						const stats = await statsResponse.json();
+						// Ensure stats is an array before using find
+						if (Array.isArray(stats)) {
+							// Find the user's contributions
+							const userStats = stats.find(contributor => 
+								contributor.author && contributor.author.login === username
+							);
+							
+							if (userStats && userStats.weeks) {
+								// Sum up all weeks' additions and deletions
+								userStats.weeks.forEach(week => {
+									totalAdditions += week.a || 0;
+									totalDeletions += week.d || 0;
+								});
+							}
+						}
+					} catch (jsonError) {
+						// Skip parsing if JSON is malformed
+						console.warn(`Error parsing stats JSON for ${repo.name}:`, jsonError.message);
 					}
 				}
 			} catch (repoError) {
@@ -109,16 +117,16 @@ try {
 		}
 	}
 	
-	// If we couldn't get real data, provide reasonable estimates
-	if (totalCommits === 0) {
-		totalCommits = Math.max(1, Math.floor(totalRepos * 15 + followers * 2));
-	}
-	if (totalAdditions === 0) {
-		totalAdditions = Math.floor(totalCommits * 35);
-	}
-	if (totalDeletions === 0) {
-		totalDeletions = Math.floor(totalCommits * 8);
-	}
+	// // If we couldn't get real data, provide reasonable estimates
+	// if (totalCommits === 0) {
+	// 	totalCommits = Math.max(1, Math.floor(totalRepos * 15 + followers * 2));
+	// }
+	// if (totalAdditions === 0) {
+	// 	totalAdditions = Math.floor(totalCommits * 35);
+	// }
+	// if (totalDeletions === 0) {
+	// 	totalDeletions = Math.floor(totalCommits * 8);
+	// }
 	
 	// Generate animated SVG
 	const svg = `
