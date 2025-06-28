@@ -16,4 +16,4 @@ COPY . .
 EXPOSE 3000
 
 # Start the server
-CMD ["npm", "start"]lfk
+CMD ["npm", "start"]
