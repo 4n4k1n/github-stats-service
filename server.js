@@ -349,9 +349,12 @@ res.json({
 });
 });
 
-app.listen(port, () => {
-console.log(`🚀 GitHub Stats Service running on port ${port}`);
-console.log(`📊 Stats endpoint: http://localhost:${port}/api/stats?username=4n4k1n`);
-});
+// Only listen when running locally (not on Vercel)
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+	app.listen(port, () => {
+		console.log(`🚀 GitHub Stats Service running on port ${port}`);
+		console.log(`📊 Stats endpoint: http://localhost:${port}/api/stats?username=4n4k1n`);
+	});
+}
 
 module.exports = app;
